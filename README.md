@@ -21,12 +21,6 @@ Write output to a markdown file:
 python3 cloud_armor_agent.py --input cloud_armor_logs.jsonl --output report.md
 ```
 
-Analyze multiple projects/gateways at once (merge files before analysis):
-
-```bash
-python3 cloud_armor_agent.py --input logs/proj-a-gw*.jsonl logs/proj-b-gw*.jsonl logs/edge-prod.json
-```
-
 ## Supported input formats
 
 - A JSON array of Cloud Logging entries

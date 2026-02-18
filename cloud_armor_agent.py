@@ -8,7 +8,6 @@ signals, and generates a concise incident-focused report.
 from __future__ import annotations
 
 import argparse
-import glob
 import json
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -41,14 +40,6 @@ class CloudArmorLogAgent:
         entries = _read_json_input(path)
         events = [_to_event(row) for row in entries]
         return cls([event for event in events if event is not None])
-
-    @classmethod
-    def from_files(cls, paths: list[str | Path]) -> "CloudArmorLogAgent":
-        events: list[ArmorEvent] = []
-        for path in paths:
-            entries = _read_json_input(path)
-            events.extend(event for event in (_to_event(row) for row in entries) if event is not None)
-        return cls(events)
 
     def summarize(self) -> dict[str, Any]:
         by_action = Counter(event.action for event in self.events)
@@ -255,12 +246,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Analyze Google Cloud Armor logs and generate an incident-focused report."
     )
-    parser.add_argument(
-        "--input",
-        nargs="+",
-        required=True,
-        help="One or more paths/glob patterns to JSON or JSONL log files",
-    )
+    parser.add_argument("--input", required=True, help="Path to JSON or JSONL log file")
     parser.add_argument(
         "--output",
         default="",
@@ -269,33 +255,11 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _expand_input_paths(values: list[str]) -> list[str]:
-    resolved: list[str] = []
-    for value in values:
-        matches = sorted(glob.glob(value))
-        if matches:
-            resolved.extend(match for match in matches if Path(match).is_file())
-        elif Path(value).is_file():
-            resolved.append(value)
-
-    unique_files: list[str] = []
-    seen: set[str] = set()
-    for file_path in resolved:
-        if file_path not in seen:
-            seen.add(file_path)
-            unique_files.append(file_path)
-    return unique_files
-
-
 def main() -> int:
     parser = _build_parser()
     args = parser.parse_args()
 
-    input_files = _expand_input_paths(args.input)
-    if not input_files:
-        parser.error("No input files found. Provide at least one valid path or glob pattern.")
-
-    agent = CloudArmorLogAgent.from_files(input_files)
+    agent = CloudArmorLogAgent.from_file(args.input)
     report = agent.generate_report()
 
     if args.output:
